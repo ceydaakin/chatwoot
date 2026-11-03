@@ -138,4 +138,13 @@ describe('#timeZoneOptions', () => {
       label: 'International Date Line West (GMT−12:00)',
     });
   });
+
+  it('includes British Columbia and Alberta zones', () => {
+    expect(timeZoneOptions()).toEqual(
+      expect.arrayContaining([
+        { label: 'Vancouver (GMT-07:00)', value: 'America/Vancouver' },
+        { label: 'Edmonton (GMT-06:00)', value: 'America/Edmonton' },
+      ])
+    );
+  });
 });
