@@ -52,8 +52,10 @@ class Contact < ApplicationRecord
                     format: { with: Devise.email_regexp, message: I18n.t('errors.contacts.email.invalid') }
   validates :identifier, allow_blank: true, uniqueness: { scope: [:account_id] }
   validates :phone_number,
-            allow_blank: true, uniqueness: { scope: [:account_id] },
-            format: { with: /\A\+[1-9]\d{1,14}\z/, message: I18n.t('errors.contacts.phone_number.invalid') }
+            allow_blank: true, format: { with: /\A\+[1-9]\d{1,14}\z/, message: I18n.t('errors.contacts.phone_number.invalid') }
+  # Older data can hold duplicate phone numbers (there is no unique index), so only check
+  # uniqueness when the number changes; otherwise unrelated updates on those contacts fail.
+  validates :phone_number, allow_blank: true, uniqueness: { scope: [:account_id] }, if: :will_save_change_to_phone_number?
 
   belongs_to :account
   has_many :conversations, dependent: :destroy_async

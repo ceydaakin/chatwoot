@@ -75,6 +75,12 @@ RSpec.describe Contact do
       expect(contact.update!(phone_number: '+12312312321')).to be true
       expect(contact.phone_number).to eq '+12312312321'
     end
+
+    it 'rejects a phone number already used by another contact in the account' do
+      existing = create(:contact, phone_number: '+12312312321')
+      contact = create(:contact, account: existing.account)
+      expect { contact.update!(phone_number: '+12312312321') }.to raise_error(ActiveRecord::RecordInvalid)
+    end
   end
 
   context 'when email format' do

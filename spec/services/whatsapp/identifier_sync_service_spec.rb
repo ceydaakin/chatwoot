@@ -30,6 +30,21 @@ RSpec.describe Whatsapp::IdentifierSyncService do
       expect(contact.reload).to be_lead
     end
 
+    it 'marks a legacy BSUID visitor as a lead when another contact already shares its phone number' do
+      channel = create(:channel_whatsapp, provider: 'whatsapp_cloud', account: account,
+                                          validate_provider_config: false, sync_templates: false)
+      contact = create(:contact, account: account, email: nil, phone_number: '+919745786257', identifier: nil)
+      # Contacts created before contact_type existed stay visitors, and older data can hold duplicate phone numbers.
+      contact.update_column(:contact_type, :visitor) # rubocop:disable Rails/SkipsModelValidations
+      duplicate = create(:contact, account: account, email: nil, phone_number: nil)
+      duplicate.update_column(:phone_number, '+919745786257') # rubocop:disable Rails/SkipsModelValidations
+      contact_inbox = create(:contact_inbox, contact: contact, inbox: channel.inbox, source_id: 'IN.2081978709342942')
+
+      described_class.new(contact_inbox: contact_inbox, contact: contact).perform(source_ids: ['IN.2081978709342942'])
+
+      expect(contact.reload).to be_lead
+    end
+
     it 'does not mark a visitor as a lead for non-BSUID WhatsApp source ids' do
       channel = create(:channel_whatsapp, provider: 'whatsapp_cloud', account: account,
                                           validate_provider_config: false, sync_templates: false)
