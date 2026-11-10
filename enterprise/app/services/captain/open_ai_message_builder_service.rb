@@ -61,9 +61,16 @@ class Captain::OpenAiMessageBuilderService
     audio_attachments = attachments.where(file_type: :audio)
     return '' if audio_attachments.blank?
 
-    audio_attachments.map do |attachment|
-      result = Messages::AudioTranscriptionService.new(attachment).perform
-      result[:success] ? result[:transcriptions] : ''
-    end.join
+    audio_attachments.map { |attachment| transcribe_audio(attachment) }.join
+  end
+
+  # A 400 from the transcription API is permanent for that file (Messages::AudioTranscriptionJob discards it too),
+  # so skip the attachment instead of failing the whole conversation history.
+  def transcribe_audio(attachment)
+    result = Messages::AudioTranscriptionService.new(attachment).perform
+    result[:success] ? result[:transcriptions] : ''
+  rescue Faraday::BadRequestError => e
+    Rails.logger.warn("Skipping audio transcription for attachment #{attachment.id}: bad request (#{e.response&.dig(:status)})")
+    ''
   end
 end

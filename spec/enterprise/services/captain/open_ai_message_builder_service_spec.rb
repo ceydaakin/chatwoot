@@ -290,6 +290,25 @@ RSpec.describe Captain::OpenAiMessageBuilderService do
         expect(result).to eq('')
       end
     end
+
+    context 'when the transcription API rejects an attachment with a bad request' do
+      let(:rejected_audio) { message.attachments.create!(account_id: message.account_id, file_type: :audio) }
+      let(:valid_audio) { message.attachments.create!(account_id: message.account_id, file_type: :audio) }
+      let(:rejected_transcription) { instance_double(Messages::AudioTranscriptionService) }
+
+      before do
+        allow(rejected_transcription).to receive(:perform).and_raise(Faraday::BadRequestError.new('the server responded with status 400'))
+        allow(Messages::AudioTranscriptionService).to receive(:new).with(rejected_audio).and_return(rejected_transcription)
+        allow(Messages::AudioTranscriptionService).to receive(:new).with(valid_audio).and_return(
+          instance_double(Messages::AudioTranscriptionService, perform: { success: true, transcriptions: 'Valid audio text.' })
+        )
+      end
+
+      it 'skips the rejected attachment and keeps the other transcriptions' do
+        result = service.send(:extract_audio_transcriptions, message.attachments)
+        expect(result).to eq('Valid audio text.')
+      end
+    end
   end
 
   describe 'private helper methods' do
