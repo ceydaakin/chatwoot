@@ -181,6 +181,18 @@ describe WebhookListener do
         ).once
         listener.conversation_created(conversation_created_event)
       end
+
+      it 'includes the first message when a reply is created before the webhook is sent' do
+        webhook = create(:webhook, inbox: inbox, account: account)
+        create(:message, message_type: 'outgoing', content: 'Automation reply', account: account, inbox: inbox, conversation: conversation)
+        expect(WebhookJob).to receive(:perform_later).with(
+          webhook.url,
+          hash_including(messages: [message.webhook_push_event_data]),
+          :account_webhook,
+          hash_including(secret: webhook.secret)
+        ).once
+        listener.conversation_created(conversation_created_event)
+      end
     end
 
     context 'when inbox is an API Channel' do
